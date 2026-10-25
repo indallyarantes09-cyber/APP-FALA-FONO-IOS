@@ -7,6 +7,9 @@ on:
     paths:
       - FalaFono-iOS.zip
       - .github/workflows/build-ios-ipa.yml
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
