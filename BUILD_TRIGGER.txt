@@ -1,0 +1,1 @@
+This temporary pull request starts the first GitHub Actions build of the Fala Fono iOS project.
