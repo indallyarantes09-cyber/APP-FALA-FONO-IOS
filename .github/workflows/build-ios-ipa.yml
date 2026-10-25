@@ -1,0 +1,59 @@
+name: Build unsigned iOS IPA
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - FalaFono-iOS.zip
+      - .github/workflows/build-ios-ipa.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 40
+    env:
+      APP_BUNDLE_ID: br.falafono.ios
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Extract Xcode project
+        run: |
+          set -euo pipefail
+          SOURCE_DIR="$RUNNER_TEMP/FalaFono-source"
+          mkdir -p "$SOURCE_DIR"
+          /usr/bin/unzip -q FalaFono-iOS.zip -d "$SOURCE_DIR"
+          test -f "$SOURCE_DIR/FalaFono.xcodeproj/project.pbxproj"
+
+      - name: Build for iOS without code signing
+        run: |
+          set -euo pipefail
+          DERIVED_DATA="$RUNNER_TEMP/DerivedData"
+          APP_PATH="$DERIVED_DATA/Build/Products/Release-iphoneos/FalaFono.app"
+          SOURCE_DIR="$RUNNER_TEMP/FalaFono-source"
+
+          xcodebuild -project "$SOURCE_DIR/FalaFono.xcodeproj" -scheme FalaFono -configuration Release -sdk iphoneos -destination "generic/platform=iOS" -derivedDataPath "$DERIVED_DATA" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" PRODUCT_BUNDLE_IDENTIFIER="$APP_BUNDLE_ID" build
+
+          if [[ ! -d "$APP_PATH" ]]; then
+            echo "Xcode did not produce FalaFono.app."
+            exit 1
+          fi
+
+          IPA_DIR="$RUNNER_TEMP/ipa"
+          mkdir -p "$IPA_DIR/Payload"
+          ditto "$APP_PATH" "$IPA_DIR/Payload/FalaFono.app"
+          (cd "$IPA_DIR" && /usr/bin/zip -qry FalaFono-unsigned.ipa Payload)
+          test -s "$IPA_DIR/FalaFono-unsigned.ipa"
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: FalaFono-IPA-sem-assinatura
+          path: ${{ runner.temp }}/ipa/FalaFono-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 7
