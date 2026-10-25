@@ -57,3 +57,5 @@ jobs:
           path: ${{ runner.temp }}/ipa/FalaFono-unsigned.ipa
           if-no-files-found: error
           retention-days: 7
+
+# Start the initial cloud build.
